@@ -1,0 +1,7 @@
+device: "COM50"
+rate: 9600
+parity: even
+characters: 7
+stopBits: 2
+flowControlMode: 'none'
+

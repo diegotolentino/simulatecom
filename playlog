@@ -1,0 +1,111 @@
+#! /usr/bin/env python 
+#encoding: utf-8
+import sys, os, subprocess, serial, time, binascii, yaml
+
+class SerialEmulator(object):
+    def __init__(self, config):
+        parity = serial.PARITY_ODD if config['parity'] == 'odd' else serial.PARITY_EVEN
+        port = config['device'].lower().replace('com', '')
+        self.outport='/dev/ttyS%s' % str(int(port)-1)
+        self.inport='/dev/ttyS%s' % str(int(port)-2)
+
+        cmd=['/usr/bin/socat','-d','-d','PTY,link=%s,raw,echo=1'%self.inport,'PTY,link=%s,raw,echo=1'%self.outport]
+        self.proc=subprocess.Popen(cmd,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+        time.sleep(3)
+
+        self.serial=serial.Serial(
+            self.inport,
+            bytesize=config['characters'],
+            stopbits=config['stopBits'],
+#            parity=parity
+        )
+        self.err=''
+        self.out=''
+
+    def writeLine(self,line):
+        line=line.strip('\r\n')
+        self.serial.write('%s\r\n'%line)
+
+    def __del__(self):
+        self.stop()
+
+    def stop(self):
+        self.proc.kill()
+        self.out,self.err=self.proc.communicate()
+
+def get_config():
+    document = open('config.yml').read()
+    print document
+    config = yaml.load(document)
+
+    if config['device'].upper()[0:3] == 'USB':
+        raise Exception('\n\nNão tem suporte para simular portas USB (Porta: %s)\n' % config['device'])
+
+    return config
+
+def formatToCom(weight, stable = True):
+    weight = str(weight).zfill(6);
+    swb  = '0011'
+    swb  += '00' if stable  else '10'
+    swb  += '10' if weight < 0 else '00'
+    swb  = binascii.unhexlify('%x' % int(swb, 2))
+
+    return ''.join([
+        '.',      # Start of Text
+        '2',      # Status Word A (Multiplicar o weight por 1)
+        swb,      # Status Word B
+        '0',      # Status Word C
+        weight,     # weight
+        '000000', # Tara
+        '0',      # Carriage Return
+        '0'       # Byte de Checksum
+    ])
+
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        raise Exception('\n\nSintax inválida para o comando, utilize: \nplaylog /path/to/logfile.cap (Linha_inicial) (Linha_final)\n')
+
+    logFile = sys.argv[1]
+    config = get_config()
+    loopTime = 0.350
+    print 'device confi: %s' % config['device']
+    ser = SerialEmulator(config)
+
+    ser.writeLine(formatToCom(-3.50, False))
+
+    print '#'*60
+    print 'Configurado a leitura para:\n%s (%s)\n' % (config['device'], ser.outport)
+    print 'Execute o comando para iniciar a captura'
+    raw_input("precione Enter para continuar...")
+
+    lines = open(logFile, "r").readlines()
+
+    start_line = 1 if len(sys.argv) < 4 else sys.argv[3]
+    stop_line = len(lines) if len(sys.argv) < 5 else sys.argv[4]
+
+    for i in range(int(start_line)-1, int(stop_line)):
+        line = lines[i]
+        if len(line.strip()) == 0:
+            continue;
+
+        time.sleep(loopTime)
+
+        stable = not line.find('*') == -1
+        weight = float(line.replace('*',''))
+        ser.writeLine(formatToCom(weight, stable))
+
+        p = (
+            str(weight).rjust(6),
+            '*' if stable else ' ',
+            i+1
+        )
+
+        print ('%s %s (L: %s)' % p)
+
+    for i in range(1, 5):
+        ser.writeLine(formatToCom(-1, False))
+        time.sleep(loopTime)
+    ser.writeLine('')
+    time.sleep(loopTime)
+    print ('EOF')
