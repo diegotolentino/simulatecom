@@ -1,8 +1,9 @@
 Sobre
 ============
 
-Utiliza o software <a href="http://www.dest-unreach.org/socat/">socat</a> e um arquivo com os pesos separados linha-a-linha para simular situações de pesagem com o fim de facilitar testes de pesagem.
+Utiliza o software <a href="http://www.dest-unreach.org/socat/">socat</a> para a existência de uma porta COM com uma balança 9091 da fabricante Toledo.
 
+Com a facilidade de se utilizar um arquivo contendo os pesos separados linha-a-linha, este script reduz em muito os custos de testes de pesagem.
 
 Instalação
 -------------
