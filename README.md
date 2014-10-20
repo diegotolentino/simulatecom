@@ -10,11 +10,11 @@ Instalação
 
 Assumindo que o python e o pip estão instalados.
 
-# pacotes python utilizados
-pip install pyserial pyyaml
+	# pacotes python utilizados
+	pip install pyserial pyyaml
 
-# pacotes debian utilizados
-aptitude install socat
+	# pacotes debian utilizados
+	aptitude install socat
 
 
 Utilização
